@@ -1,0 +1,172 @@
+
+#pragma warning (disable : 4996)
+#include <stdio.h>
+
+
+
+enum State {copy, slash, eolComment, mlComment, mlEnd, quoteCopy, escapeChar};
+
+
+
+enum State copyFunct(char c, FILE* fpWriteIn) {
+	
+	if (c == 47) {
+		return slash;
+	}
+
+	
+	
+	fputc(c, fpWriteIn);
+	putc(c, stdout);
+
+	
+	if (c == 34) {
+		return quoteCopy;
+	}
+	return copy;
+}
+
+enum State slashFunct(char c, FILE* fpWriteIn) {
+	
+	if (c == 47) {
+		return eolComment;
+	}
+
+	
+	if (c == 42) {
+		return mlComment;
+	}
+
+	fputc('/', fpWriteIn);
+	putc('/', stdout);
+	fputc(c, fpWriteIn);
+	putc(c, stdout);
+	return copy;
+}
+
+enum State eolFunct(char c, FILE* fpWriteIn) {
+	
+	
+	if (c == 10 || c == 13) {
+		fputc(c, fpWriteIn);
+		putc(c, stdout);
+		return copy;
+	}
+	return eolComment;
+}
+
+enum State mlFunct(char c, FILE* fpWriteIn) {
+	if (c == 42) {
+		return mlEnd;
+	}
+	return mlComment;
+}
+
+enum State mlEndFunct(char c, FILE* fpWriteIn) {
+	if (c == 47) {
+		return copy;
+	}
+	fputc(c, fpWriteIn);
+	putc(c, stdout);
+	return mlComment;
+}
+
+enum State quoteFunct(char c, FILE* fpWriteIn) {
+	
+	fputc(c, fpWriteIn);
+	putc(c, stdout);
+
+	
+	if (c == 92) {
+		return escapeChar;
+	}
+	
+	if (c == 34) {
+		return copy;
+	}
+
+	return quoteCopy;
+}
+
+enum State escapeCharFunct(char c, FILE* fpWriteIn) {
+	fputc(c, fpWriteIn);
+	putc(c, stdout);
+	return quoteCopy;
+}
+
+
+int main(int argc, char* argv[])
+{
+	char* fileName;
+
+	if (argc == 2) {
+		fileName = argv[1];
+	}
+	else {
+		printf("Usage: A5_Q1 [source-file-name]\n");
+		return -1;
+	}
+
+	
+	FILE* fpRead;
+	FILE* fpWrite;
+	
+	
+	
+	fpRead = fopen(fileName, "r");
+	if (fpRead == NULL) {
+		printf("Could not open file %s", fileName);
+
+		
+		
+		
+		return 1;
+	}
+
+	fpWrite = fopen("no_comments.txt", "w");
+	if (fpWrite == NULL) {
+		printf("Could not create file no_comments.txt\n");
+		return 1;
+	}
+
+	int charC;
+	int nextC = 0;
+
+	enum State state = copy;
+
+
+	while (1) {
+
+		charC = fgetc(fpRead);
+		if (feof(fpRead)) {
+			break;
+		}
+		switch (state)
+		{
+			case copy:
+				state = copyFunct(charC, fpWrite);
+				break;
+			case slash:
+				state = slashFunct(charC, fpWrite);
+				break;
+			case eolComment:
+				state = eolFunct(charC, fpWrite);
+				break;
+			case mlComment:
+				state = mlFunct(charC, fpWrite);
+				break;
+			case mlEnd:
+				state = mlEndFunct(charC, fpWrite);
+				break;
+			case quoteCopy:
+				state = quoteFunct(charC, fpWrite);
+				break;
+			case escapeChar:
+				state = escapeCharFunct(charC, fpWrite);
+				break;
+		}
+	}
+
+	fclose(fpWrite);
+	return 0;
+}
